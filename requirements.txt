@@ -4,3 +4,4 @@ joblib
 matplotlib
 seaborn
 wordcloud
+scikit-learn
