@@ -2,17 +2,30 @@ import streamlit as st
 import pandas as pd
 import os
 import re
+import unicodedata
+
+
 
 # ==========================================
 # FIX UNTUK ERROR CUSTOM_TOKENIZER
 # ==========================================
 def custom_tokenizer(text):
-    """
-    Custom tokenizer yang SAMA PERSIS dengan saat training.
-    Fungsi ini harus ada di app.py agar vectorizer bisa dimuat tanpa error.
-    """
-    return re.findall(r"\w+|[^\w\s]", text)
-
+    text = str(text)
+    
+    # 2. Normalisasi font aneh (unicode) ke font standar biasa
+    text = unicodedata.normalize('NFKD', text)
+    
+    # 3. Ganti semua karakter yang BUKAN huruf dan BUKAN angka dengan SPASI
+    # Ini agar simbol seperti ░ atau emoji tidak bikin kata di sebelahnya menempel
+    text = re.sub(r'[^a-zA-Z0-9\s]', ' ', text)
+    
+    # 4. Ubah ke huruf kecil semua (Case folding)
+    text = text.lower()
+    
+    # 5. Rapikan spasi yang berlebihan dan ambil kata-katanya saja
+    text = " ".join(text.split())
+    
+    return text
 # ==========================================
 # PAGE CONFIGURATION
 # ==========================================

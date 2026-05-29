@@ -3,6 +3,10 @@ import pandas as pd
 import joblib
 import os
 import re
+import unicodedata
+import __main__
+
+
 
 # ==========================================
 # PAGE CONFIGURATION
@@ -106,6 +110,35 @@ st.markdown("""
 # LOAD MODELS & VECTORIZER
 # ==========================================
 @st.cache_resource
+
+def custom_tokenizer(text):
+    text = str(text)
+    
+    # 2. Normalisasi font aneh (unicode) ke font standar biasa
+    # Contoh: 𝐒𝐆𝐈𝟖𝟖 -> SGI88, 𝙈𝘼𝙉𝙐𝙏88 -> MANUT88
+    text = unicodedata.normalize('NFKD', text)
+    
+    # 3. Ganti semua karakter yang BUKAN huruf dan BUKAN angka dengan SPASI
+    # Ini agar simbol seperti ░ atau emoji tidak bikin kata di sebelahnya menempel
+    text = re.sub(r'[^a-zA-Z0-9\s]', ' ', text)
+    
+    # 4. Ubah ke huruf kecil semua (Case folding)
+    text = text.lower()
+    
+    # 5. Rapikan spasi yang berlebihan dan ambil kata-katanya saja
+    text = " ".join(text.split())
+    
+    return text
+
+__main__.custom_tokenizer = custom_tokenizer
+
+def detect_judi_keywords(text):
+    # Daftar kata kunci judol
+    keywords = ['slot', 'gacor', 'depo', 'wd', 'maxwin', 'rtp', 'zeus', 'scatter', 'garansi kekalahan']
+    text_lower = text.lower()
+    found = [kw for kw in keywords if kw in text_lower]
+    return found
+
 def load_models_and_vectorizer():
     """
     Load semua model dan vectorizer
@@ -227,7 +260,7 @@ if st.button("🔍 ANALISIS KOMENTAR", type="primary", use_container_width=True)
     else:
         try:
             # Step 1: Preprocessing (HARUS SAMA dengan training!)
-            clean = clean_text(input_text)
+            clean = custom_tokenizer(input_text)
             
             # Step 2: Vectorize dengan vectorizer yang sudah loaded
             X = vectorizer.transform([clean])
@@ -238,6 +271,9 @@ if st.button("🔍 ANALISIS KOMENTAR", type="primary", use_container_width=True)
             
             # Step 4: Detect keywords untuk info tambahan
             keywords_found = detect_judi_keywords(input_text)
+            
+            if len(keywords_found) > 1:
+                prediction = 1
             
             # Step 5: Display Results
             st.markdown("---")
@@ -312,7 +348,7 @@ st.markdown("### [COMPARE ALL MODELS]")
 
 if st.button("📊 BANDINKAN SEMUA MODEL", use_container_width=True):
     if input_text.strip():
-        clean = clean_text(input_text)
+        clean = custom_tokenizer(input_text)
         X = vectorizer.transform([clean])
         
         st.markdown("#### Hasil Prediksi dari Semua Model:")
@@ -404,8 +440,8 @@ if uploaded_file:
                 try:
                     batch_model = models[batch_model_name]
                     
-                    # Preprocessing: gunakan clean_text yang sama dengan single prediction
-                    df_batch['clean'] = df_batch[text_col].astype(str).apply(clean_text)
+                    # Preprocessing: gunakan custom_tokenizer yang sama dengan single prediction
+                    df_batch['clean'] = df_batch[text_col].astype(str).apply(custom_tokenizer)
                     
                     # Vectorize batch data
                     X_batch = vectorizer.transform(df_batch['clean'].tolist())
@@ -418,12 +454,18 @@ if uploaded_file:
                     df_batch['prediction'] = predictions
                     df_batch['probability_spam'] = [prob[1] for prob in probabilities]
                     df_batch['confidence'] = [max(prob)*100 for prob in probabilities]
-                    df_batch['label'] = df_batch['prediction'].map({0: 'NORMAL', 1: 'SPAM'})
                     
-                    # Keyword detection
-                    df_batch['judi_keywords'] = df_batch[text_col].apply(detect_judi_keywords)
+                    # 2. Deteksi Keyword (Pastikan fungsi detect_judi_keywords sudah ada di atas)
+                    # Kita cek dari teks aslinya (text_col)
+                    df_batch['judi_keywords'] = df_batch[text_col].astype(str).apply(detect_judi_keywords)
                     df_batch['keyword_count'] = df_batch['judi_keywords'].apply(len)
                     
+                    # 3. 🔥 OVERRIDE TUGAS AKHIR 🔥
+                    # Jika ML menebak 0 (Normal) TAPI keyword_count > 0, paksa ubah jadi 1 (Spam)
+                    df_batch.loc[df_batch['keyword_count'] > 0, 'prediction'] = 1
+                    
+                    # 4. Buat label berdasarkan hasil akhir (setelah di-override)
+                    df_batch['label'] = df_batch['prediction'].map({0: 'NORMAL', 1: 'SPAM'})
                     # Statistics
                     spam_count = (df_batch['prediction'] == 1).sum()
                     normal_count = len(df_batch) - spam_count
