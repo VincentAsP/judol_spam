@@ -5,21 +5,39 @@ import seaborn as sns
 from wordcloud import WordCloud
 import os
 
-# ==========================================
+
 # PAGE CONFIGURATION
-# ==========================================
 st.set_page_config(
     page_title="EDA - SPAM DETECTOR",
-    page_icon="",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# ==========================================
+
 # CUSTOM CSS - TEMA BIRU TERMINAL
-# ==========================================
 st.markdown("""
 <style>
+            
+/* FORCE DARK BACKGROUND */
+html, body,
+.stApp,
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"],
+[data-testid="block-container"],
+.main, .block-container {
+    background-color: #0a1628 !important;
+    color: #00d4ff !important;
+}
+
+@media (prefers-color-scheme: light) {
+    html, body, .stApp,
+    [data-testid="stAppViewContainer"] {
+        background-color: #0a1628 !important;
+        color: #00d4ff !important;
+    }
+}
+            
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
 
 .main {
@@ -146,12 +164,15 @@ h1, h2, h3 {
     margin: 8px 0;
     font-size: 13px;
 }
+            
+[data-testid="stSidebarNav"] {
+    display: none;
+}
+            
 </style>
 """, unsafe_allow_html=True)
 
-# ==========================================
 # SIDEBAR (MATCHING THE IMAGE)
-# ==========================================
 with st.sidebar:
     # Header
     st.markdown("""
@@ -163,7 +184,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
     
     # Workflow Progress
-    progress = st.session_state.get('workflow_progress', 25)
+    progress = st.session_state.get('workflow_progress', 50)
     st.markdown(f"**WORKFLOW PROGRESS: {progress}%**")
     
     # Custom progress bar (red like in image)
@@ -178,21 +199,17 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # Navigation
     st.markdown("**NAVIGATION:**")
     
     # BERANDA button
     if st.button("🏠 BERANDA", use_container_width=True, key="beranda_btn"):
         st.switch_page("app.py")
     
-    # EDA button (active)
-    if st.button(" 1. EDA", use_container_width=True, key="eda_btn", type="primary"):
+    if st.button("📊 1. EDA", use_container_width=True, key="eda_btn", type="primary"):
         st.rerun()
     
     # Locked items
-    st.markdown('<div class="locked-item"> 2. PREPROCESSING</div>', unsafe_allow_html=True)
-    st.markdown('<div class="locked-item">🔒 3. EVALUATION</div>', unsafe_allow_html=True)
-    st.markdown('<div class="locked-item">🔒 4. PREDICTION</div>', unsafe_allow_html=True)
+    st.markdown('<div class="locked-item">🔒 2. PREDICTION</div>', unsafe_allow_html=True)
     
     st.markdown("---")
     
@@ -213,8 +230,8 @@ with st.sidebar:
     
     st.markdown("---")
     
-    if st.button(" REBOOT SYSTEM", use_container_width=True, key="reboot_btn"):
-        # Clear ALL session state
+    if st.button("🔄 REBOOT SYSTEM", use_container_width=True, key="reboot_btn"):
+    # Clear ALL session state
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         
@@ -232,9 +249,9 @@ with st.sidebar:
         # Force redirect ke app.py (home)
         st.switch_page("app.py")
 
-# ==========================================
+# ========================================
 # MAIN CONTENT - EDA
-# ==========================================
+# ========================================
 
 # Title
 st.markdown("""
@@ -246,9 +263,7 @@ st.markdown("""
 
 st.markdown("---")
 
-# ==========================================
 # LOAD DATASET
-# ==========================================
 @st.cache_data
 def load_data():
     try:
@@ -261,16 +276,15 @@ def load_data():
 df = load_data()
 
 if df is None:
-    st.error(" File dataset_judol.csv tidak ditemukan!")
+    st.error("❌ File dataset_judol.csv tidak ditemukan!")
     st.stop()
 
 # Simpan ke session state
 st.session_state.raw_data = df
 st.session_state.data_loaded = True
 
-# ==========================================
+
 # 1. DATA TERMINAL - PREVIEW
-# ==========================================
 st.markdown("## DATA TERMINAL")
 st.markdown('<div style="border-bottom: 2px dashed #00d4ff; margin: 20px 0;"></div>', unsafe_allow_html=True)
 
@@ -290,9 +304,8 @@ if st.session_state.get('show_full', False):
 
 st.markdown("---")
 
-# ==========================================
+
 # 2. DATASET OVERVIEW
-# ==========================================
 st.markdown("## DATASET OVERVIEW")
 st.markdown('<div style="border-bottom: 2px dashed #00d4ff; margin: 20px 0;"></div>', unsafe_allow_html=True)
 
@@ -325,9 +338,8 @@ with col3:
 
 st.markdown("---")
 
-# ==========================================
+
 # 3. DATA TYPES & MISSING VALUES
-# ==========================================
 st.markdown("### › DATA TYPES & MISSING VALUES:")
 
 col_info = pd.DataFrame({
@@ -341,9 +353,9 @@ st.dataframe(col_info, use_container_width=True, hide_index=True)
 
 st.markdown("---")
 
-# ==========================================
+
 # 4. DATASET SHAPE
-# ==========================================
+
 st.markdown("### › DATASET SHAPE:")
 
 st.markdown(f"""
@@ -356,9 +368,7 @@ st.markdown(f"""
 
 st.markdown("---")
 
-# ==========================================
 # 5. STATISTICAL SUMMARY
-# ==========================================
 st.markdown("## STATISTICAL SUMMARY")
 st.markdown('<div style="border-bottom: 2px dashed #00d4ff; margin: 20px 0;"></div>', unsafe_allow_html=True)
 
@@ -370,9 +380,7 @@ if numerical_cols:
     st.dataframe(describe_df.T, use_container_width=True)
     st.markdown("---")
 
-# ==========================================
 # 6. LABEL DISTRIBUTION (if exists)
-# ==========================================
 if 'label' in df.columns:
     st.markdown("## CLASS DISTRIBUTION")
     st.markdown('<div style="border-bottom: 2px dashed #00d4ff; margin: 20px 0;"></div>', unsafe_allow_html=True)
@@ -418,9 +426,8 @@ if 'label' in df.columns:
     
     st.markdown("---")
 
-# ==========================================
+
 # 7. TEXT ANALYSIS (if text column exists)
-# ==========================================
 text_col = None
 for col in ['komentar_clean', 'komentar', 'text', 'komentar_spam']:
     if col in df.columns:
@@ -478,12 +485,54 @@ if text_col:
     
     st.markdown("---")
 
-# ==========================================
-# FOOTER
-# ==========================================
+# FOOTER + NAVIGATION TO PREDICTION
+st.markdown("---")
+
+col_nav1, col_nav2 = st.columns(2)
+
+with col_nav1:
+    # Tombol langsung ke Prediction dengan auto-preprocessing
+    if st.button("⚡ LANJUT KE PREDICTION", type="primary", use_container_width=True):
+        with st.spinner("🔄 Menyiapkan sistem..."):
+            # 1. Auto preprocessing di background
+            text_col = None
+            for col in ['komentar_clean', 'komentar', 'text', 'komentar_spam']:
+                if col in df.columns:
+                    text_col = col
+                    break
+            
+            if text_col:
+                # Import preprocessing functions
+                from preprocess import preprocess_pipeline, detect_judi_keywords
+                
+                # Preprocessing otomatis
+                df['cleaned_text'] = df[text_col].apply(
+                    lambda x: preprocess_pipeline(x, do_stopwords=True, do_stem=False)
+                )
+                df['text_length'] = df['cleaned_text'].apply(len)
+                df['word_count'] = df['cleaned_text'].apply(lambda x: len(x.split()))
+                df['judi_keywords'] = df[text_col].apply(detect_judi_keywords)
+                df['keyword_count'] = df['judi_keywords'].apply(len)
+                
+                # Save ke session state
+                st.session_state.df_processed = df
+                st.session_state.text_column = text_col
+                st.session_state.preprocessing_done = True
+                
+                # Update workflow progress
+                st.session_state.workflow_progress = 100
+                
+                st.success("✅ Sistem siap! Redirecting ke prediction...")
+                
+                import time
+                time.sleep(1.5)
+                st.switch_page("pages/Prediction.py")
+            else:
+                st.error("❌ Kolom teks tidak ditemukan!")
+
+# Footer Info
 st.markdown("""
 <div style="text-align: center; color: #0099cc; padding: 20px; border-top: 2px solid #00d4ff; margin-top: 30px;">
     <p style="font-size: 14px;">[EDA MODULE COMPLETE] ✅</p>
-    <p style="font-size: 12px;">Dataset siap untuk preprocessing</p>
 </div>
 """, unsafe_allow_html=True)

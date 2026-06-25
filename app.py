@@ -1,34 +1,11 @@
 import streamlit as st
 import pandas as pd
 import os
-import re
-import unicodedata
+import re 
+from preprocess import custom_tokenizer
 
 
-
-# ==========================================
-# FIX UNTUK ERROR CUSTOM_TOKENIZER
-# ==========================================
-def custom_tokenizer(text):
-    text = str(text)
-    
-    # 2. Normalisasi font aneh (unicode) ke font standar biasa
-    text = unicodedata.normalize('NFKD', text)
-    
-    # 3. Ganti semua karakter yang BUKAN huruf dan BUKAN angka dengan SPASI
-    # Ini agar simbol seperti ░ atau emoji tidak bikin kata di sebelahnya menempel
-    text = re.sub(r'[^a-zA-Z0-9\s]', ' ', text)
-    
-    # 4. Ubah ke huruf kecil semua (Case folding)
-    text = text.lower()
-    
-    # 5. Rapikan spasi yang berlebihan dan ambil kata-katanya saja
-    text = " ".join(text.split())
-    
-    return text
-# ==========================================
 # PAGE CONFIGURATION
-# ==========================================
 st.set_page_config(
     page_title="SPAM BOT DETECTOR",
     page_icon="🛡️",
@@ -36,11 +13,29 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ==========================================
 # CUSTOM CSS - TEMA BIRU TERMINAL
-# ==========================================
 st.markdown("""
 <style>
+            
+/* FORCE DARK BACKGROUND */
+html, body,
+.stApp,
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"],
+[data-testid="block-container"],
+.main, .block-container {
+    background-color: #0a1628 !important;
+    color: #00d4ff !important;
+}
+
+@media (prefers-color-scheme: light) {
+    html, body, .stApp,
+    [data-testid="stAppViewContainer"] {
+        background-color: #0a1628 !important;
+        color: #00d4ff !important;
+    }
+}
+            
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
 
 /* Main Background */
@@ -211,12 +206,14 @@ hr {
     border: 1px solid #00d4ff;
     margin: 30px 0;
 }
+            
+[data-testid="stSidebarNav"] {
+    display: none;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# ==========================================
 # SESSION STATE INITIALIZATION
-# ==========================================
 if 'workflow_progress' not in st.session_state:
     st.session_state.workflow_progress = 0
 if 'data_loaded' not in st.session_state:
@@ -226,9 +223,8 @@ if 'model_trained' not in st.session_state:
 if 'diagnostics_initialized' not in st.session_state:
     st.session_state.diagnostics_initialized = False
 
-# ==========================================
+
 # SIDEBAR NAVIGATION
-# ==========================================
 with st.sidebar:
     st.markdown("""
     <div style="text-align: center; padding: 20px;">
@@ -256,10 +252,8 @@ with st.sidebar:
         st.rerun()
     
     steps = [
-        ("📊", "EDA", 25, "1"),
-        ("⚙️", "PREPROCESSING", 50, "2"),
-        ("", "EVALUATION", 75, "3"),
-        ("🎯", "PREDICTION", 100, "4")
+        ("📊", "EDA", 50, "1"),
+        ("🎯", "PREDICTION", 100, "2")
     ]
     
     for icon, label, req_progress, num in steps:
@@ -270,10 +264,6 @@ with st.sidebar:
             if st.button(f"{icon} {num}. {label}", use_container_width=True):
                 if label == "EDA":
                     st.switch_page("pages/EDA.py")
-                elif label == "PREPROCESSING":
-                    st.switch_page("pages/2_⚙️_Preprocessing_Info.py")
-                elif label == "EVALUATION":
-                    st.switch_page("pages/3_📈_Model_Evaluation.py")
                 elif label == "PREDICTION":
                     st.switch_page("pages/4_🎯_Prediction.py")
     
@@ -281,7 +271,7 @@ with st.sidebar:
     
     # System info
     st.markdown("**SYSTEM INFO:**")
-    st.markdown(f"• Data: {'✅ READY' if st.session_state.data_loaded else '️ NONE'}")
+    st.markdown(f"• Data: {'✅ READY' if st.session_state.data_loaded else '⏸️ NONE'}")
     st.markdown(f"• Model: {'✅ READY' if st.session_state.model_trained else '⏸️ NONE'}")
     st.markdown(f"• Diagnostics: {'✅ INIT' if st.session_state.diagnostics_initialized else '⏸️ WAIT'}")
     
@@ -303,25 +293,25 @@ with st.sidebar:
         
         st.success("🔄 SYSTEM REBOOTED! Semua data direset ke kondisi awal.")
         st.info("⏳ Redirecting ke halaman utama...")
-        st.rerun()
+        
+        # Force redirect ke app.py (home)
+        st.switch_page("app.py")
 
-# ==========================================
+# ========================================
 # MAIN CONTENT - HEADER
-# ==========================================
+# ========================================
 st.markdown("""
 <div style="text-align: center; padding: 30px; border: 2px solid #00d4ff; border-radius: 15px; margin-bottom: 30px; background: linear-gradient(180deg, #0d2137 0%, #0a1628 100%);">
     <h1 style="color: #00d4ff; font-size: 40px; margin: 0;">🛡️ SISTEM DETEKSI SPAM BOT</h1>
     <h2 style="color: #00d4ff; font-size: 28px; margin: 10px 0;">JUDI ONLINE DI MEDIA SOSIAL</h2>
-    <p style="color: #0099cc; font-size: 16px; margin: 20px 0 0 0;">
-    [TUGAS AKHIR - PERLINDUNGAN MASYARAKAT DIGITAL INDONESIA]</p>
     <p style="color: #00d4ff; font-size: 14px; margin-top: 10px; font-family: monospace;">
     > SYSTEM STATUS: ONLINE | MODE: DETECTION | TARGET: JUDOL SPAM</p>
 </div>
 """, unsafe_allow_html=True)
 
-# ==========================================
+# ========================================
 # WARNING BANNER
-# ==========================================
+# ========================================
 st.markdown("""
 <div class="warning-banner">
     ⚠️ PERINGATAN: JUDI ONLINE (JUDOL) MERUPAKAN TINDAK PIDANA DI INDONESIA<br>
@@ -331,9 +321,9 @@ st.markdown("""
 
 st.markdown("---")
 
-# ==========================================
+# ========================================
 # SECTION 1: FAKTA & STATISTIK
-# ==========================================
+# ========================================
 st.markdown("## 📊 [FAKTA & STATISTIK JUDI ONLINE DI INDONESIA]")
 
 col1, col2, col3, col4 = st.columns(4)
@@ -372,9 +362,9 @@ with col4:
 
 st.markdown("---")
 
-# ==========================================
+# ========================================
 # SECTION 2: DAMPAK BAHAYA JUDOL
-# ==========================================
+# ========================================
 st.markdown("## ⚠️ [DAMPAK BAHAYA JUDI ONLINE]")
 
 col5, col6 = st.columns(2)
@@ -412,7 +402,7 @@ col7, col8 = st.columns(2)
 with col7:
     st.markdown("""
     <div class="danger-box">
-        <h3 style="color: #ff4466; margin-top: 0;">‍👧 DAMPAK SOSIAL</h3>
+        <h3 style="color: #ff4466; margin-top: 0;">👨‍👧 DAMPAK SOSIAL</h3>
         <ul style="color: #ff8899; padding-left: 20px; line-height: 1.8;">
             <li>Konflik dan perceraian keluarga</li>
             <li>Kekerasan dalam rumah tangga</li>
@@ -439,9 +429,9 @@ with col8:
 
 st.markdown("---")
 
-# ==========================================
+# ========================================
 # SECTION 3: FAKTA MENGEJUTKAN
-# ==========================================
+# ========================================
 st.markdown("## 🔍 [FAKTA MENGEJUTKAN TENTANG JUDOL]")
 
 facts_data = [
@@ -501,10 +491,10 @@ for i in range(0, len(facts_data), 2):
 
 st.markdown("---")
 
-# ==========================================
+# ========================================
 # SECTION 4: MODUS OPERANDI
-# ==========================================
-st.markdown("##  [MODUS OPERANDI SPAM JUDI ONLINE]")
+# ========================================
+st.markdown("## 🎭 [MODUS OPERANDI SPAM JUDI ONLINE]")
 
 col9, col10 = st.columns(2)
 
@@ -526,7 +516,7 @@ with col9:
 with col10:
     st.markdown("""
     <div class="terminal-box">
-        <h3 style="color: #00d4ff; margin-top: 0;"> TEKNIK MANIPULASI:</h3>
+        <h3 style="color: #00d4ff; margin-top: 0;">🎣 TEKNIK MANIPULASI:</h3>
         <ul style="color: #ff8899; padding-left: 20px; line-height: 2;">
             <li>"BONUS 100% untuk member baru"</li>
             <li>"RTP TINGGI 99% - PASTI MENANG"</li>
@@ -540,10 +530,10 @@ with col10:
 
 st.markdown("---")
 
-# ==========================================
+# ========================================
 # SECTION 5: TUJUAN PENELITIAN
-# ==========================================
-st.markdown("## ️ [MENGAPA SISTEM DETEKSI INI PENTING?]")
+# ========================================
+st.markdown("## 🛡️ [MENGAPA SISTEM DETEKSI INI PENTING?]")
 
 st.markdown("""
 <div class="metric-card" style="text-align: center; padding: 30px;">
@@ -592,28 +582,27 @@ with col13:
 
 st.markdown("---")
 
-# ==========================================
+# ========================================
 # SECTION 6: TOMBOL INITIALIZE → NAVIGASI KE EDA
-# ==========================================
-if st.button(" INITIALIZE DIAGNOSTICS", type="primary", use_container_width=True):
+# ========================================
+if st.button("⚡ MULAI ANALISA", type="primary", use_container_width=True):
     st.session_state.diagnostics_initialized = True
-    st.session_state.workflow_progress = 25
+    st.session_state.workflow_progress = 50
     st.session_state.data_loaded = True
     
-    st.success("✅ DIAGNOSTICS INITIALIZED! Sistem siap melakukan analisis...")
+    st.success("✅ ANALISA DIMULAI! Sistem siap melakukan analisis...")
     st.balloons()
     
     # 🔄 Auto-navigate ke halaman EDA
     st.switch_page("pages/EDA.py")
 
-# ==========================================
+# ========================================
 # FOOTER
-# ==========================================
+# ========================================
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; padding: 20px; color: #0099cc; font-size: 12px;">
-    <p style="font-size: 14px; margin-bottom: 10px;">🛡️ SISTEM DETEKSI SPAM BOT JUDI ONLINE v1.0</p>
-    <p>Tugas Akhir - Perlindungan Masyarakat Digital Indonesia</p>
+    <p style="font-size: 14px; margin-bottom: 10px;">🛡️ SISTEM DETEKSI SPAM BOT JUDI ONLINE</p>
     <p style="margin-top: 15px; color: #ff4466; font-size: 14px; font-weight: bold;">
     STOP JUDI ONLINE! LINDUNGI KELUARGA DAN MASYARAKAT
     </p>
